@@ -6,7 +6,8 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Dropout, Activation
 from keras.optimizers import SGD
 from sklearn.preprocessing import StandardScaler
-from keras.regularizers import l1, activity_l2, l2
+from keras.regularizers import l1, l2
+from keras.layers import deserialize as layer_from_config
 from keras.callbacks import EarlyStopping, Callback
 from keras.preprocessing import sequence
 from sklearn.preprocessing import MinMaxScaler
@@ -32,11 +33,11 @@ def train_val_split(X):
 	#Split data into train and test: 70%-30% split
 	random.seed(7)
 	ind_1 = np.array(range(0,X.shape[0]))
-	ind_val_1 = np.array(random.sample(ind_1, int(0.3*X.shape[0])))
+	ind_val_1 = np.array(random.sample(list(ind_1), int(0.3*X.shape[0])))
 	ind_train_1 = np.delete(ind_1, ind_val_1)
 	random.seed(7)
 	ind_2 = ind_train_1
-	ind_val_2 = np.array(random.sample(ind_2, int(0.3*X.shape[0])))
+	ind_val_2 = np.array(random.sample(list(ind_2), int(0.3*X.shape[0])))
 	ind_train_2 = np.delete(ind_1, ind_val_2)
 	x_1 = X[ind_train_1,0:X.shape[1]-1]
 	x_val_1 = X[ind_val_1,0:X.shape[1]-1]
@@ -75,7 +76,7 @@ p[1].set_title('Plot of y vs time-index')
 p[2].set_title('Plot of log(x) vs log(time-index')
 p[3].set_title('Plot of log(y) vs log(time-index')
 z = np.where(ip[:,0] == 0)[0]
-for i in xrange(len(z)-1):
+for i in range(len(z)-1):
 	p[0].plot(ip[z[i]:z[i+1],0], ip[z[i]:z[i+1],1])
 	p[1].plot(ip[z[i]:z[i+1],0], ip[z[i]:z[i+1],2])
 	p[2].plot(np.log(ip[z[i]:z[i+1],0]), np.log(ip[z[i]:z[i+1],1]))
@@ -104,34 +105,34 @@ x_1, x_val_1, y_1, y_val_1, x_2, x_val_2, y_2, y_val_2 = train_val_split(X)
 ##########Build model-1#############
 
 #Model 1
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 10
-model1.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
+modelone.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m1 = 1-(pow(history.min_loss, 0.5)/np.mean(y_val_1))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1))
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
-model1.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
+modelone.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t1 = 0.707106781187
 x_pred_1 = []
-for i in xrange(2,101):
-	x_pred_1.append(model1.predict(np.array([[x_t1, i, x_t1*i]]))[0][0])
+for i in range(2,101):
+	x_pred_1.append(modelone.predict(np.array([[x_t1, i, x_t1*i]]))[0][0])
 
 
 
@@ -141,37 +142,37 @@ for i in xrange(2,101):
 ##########Build model-2#############
 
 #Model 2
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 10
-model2.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
+modeltwo.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+#print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m2 = 1-(pow(history.min_loss, 0.5)/np.mean(y_val_2))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2))
 """
 plot_history(history)
 """
 #get the best epoch and re run training on entire data
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
-model2.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0),  nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
+modeltwo.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0),  nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t2 = 0.707106781187
 x_pred_2 = []
-for i in xrange(2,101):
-	x_pred_2.append(model2.predict(np.array([[x_t2, i, x_t2*i]]))[0][0])
+for i in range(2,101):
+	x_pred_2.append(modeltwo.predict(np.array([[x_t2, i, x_t2*i]]))[0][0])
 
 
 
 
-###### Take average of results from model1 and model2
+###### Take average of results from modelone and modeltwo
 w_m1 = w_m1/(w_m1+w_m2)
 w_m2 = 1-w_m1
 x_pred = w_m1 * np.array(x_pred_1) + w_m2 * np.array(x_pred_2)
@@ -197,42 +198,43 @@ x_1, x_val_1, y_1, y_val_1, x_2, x_val_2, y_2, y_val_2 = train_val_split(X)
 
 #data values are not to large or small, no high variance, hence there is no need to normalize 
 ##########Build model-1#############
+#y.min_loss
 
 #Model 1
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 10
-model1.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
+modelone.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
 
 ####predict for x_val and get mse in non-log transformed output.
-y_val_pred = pow(math.e, model1.predict(x_val_1)[:,0])
+y_val_pred = pow(math.e, modelone.predict(x_val_1)[:,0])
 y_val_actual = pow(math.e, y_val_1)
 
 
-print "Minimum validation loss is - mean square error: ",  np.mean(pow(y_val_pred - y_val_actual,2)) 
+print("Minimum validation loss is - mean square error: ",  np.mean(pow(y_val_pred - y_val_actual,2)))
 w_m1 = 1- (pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)/np.mean(y_val_actual))
-print "RMSE percent of mean of output: ", pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)*100/np.mean(y_val_actual) 
+print("RMSE percent of mean of output: ", pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)*100/np.mean(y_val_actual))
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
-model1.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
+modelone.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t1 = 0.707106781187
 x_t1_log = math.log(x_t1)
 x_pred_1 = []
-for i in xrange(2,101):
-	x_pred_1.append(pow(math.e,model1.predict(np.array([[math.log(i), x_t1_log]]))[0][0]))
+for i in range(2,101):
+	x_pred_1.append(pow(math.e,modelone.predict(np.array([[math.log(i), x_t1_log]]))[0][0]))
 
 
 
@@ -241,43 +243,43 @@ for i in xrange(2,101):
 ##########Build model-2#############
 
 #Model 2
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 10
-model2.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
+modeltwo.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
 
 ####predict for x_val and get mse in non-log transformed output.
-y_val_pred = pow(math.e, model2.predict(x_val_2)[:,0])
+y_val_pred = pow(math.e, modeltwo.predict(x_val_2)[:,0])
 y_val_actual = pow(math.e, y_val_2)
 
-print "Minimum validation loss is - mean square error: ",  np.mean(pow(y_val_pred - y_val_actual,2)) 
+print("Minimum validation loss is - mean square error: ",  np.mean(pow(y_val_pred - y_val_actual,2)))
 w_m2 = 1 - (pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)/np.mean(y_val_actual))
-print "RMSE percent of mean of output: ", pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)*100/np.mean(y_val_actual) 
+print("RMSE percent of mean of output: ", pow( np.mean(pow(y_val_pred - y_val_actual,2)) , 0.5)*100/np.mean(y_val_actual))
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
-model2.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
+modeltwo.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t1 = 0.707106781187
 x_t1_log = math.log(x_t1)
 x_pred_2 = []
-for i in xrange(2,101):
-	x_pred_2.append(pow(math.e,model2.predict(np.array([[math.log(i), x_t1_log]]))[0][0]))
+for i in range(2,101):
+	x_pred_2.append(pow(math.e,modeltwo.predict(np.array([[math.log(i), x_t1_log]]))[0][0]))
 
 
 
-###### Take average of results from model1 and model2
+###### Take average of results from modelone and modeltwo
 w_m1 = w_m1/(w_m1+w_m2)
 w_m2 = 1-w_m1
 x_pred_log = w_m1*np.array(x_pred_1) + w_m2*np.array(x_pred_2)
@@ -312,35 +314,35 @@ x_1, x_val_1, y_1, y_val_1, x_2, x_val_2, y_2, y_val_2 = train_val_split(X)
 ##########Build model-1#############
 
 #Model 1
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 1
-model1.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
+modelone.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_1, y_val_1), shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m1 = 1 - (pow(history.min_loss, 0.5)/np.mean(y_val_1))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) )
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model1 = Sequential()
-model1.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model1.compile(loss='mse', optimizer='adam')
+modelone = Sequential()
+modelone.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modelone.compile(loss='mse', optimizer='adam')
 
-model1.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modelone.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 y_t1 = 0.658106781187
 y_pred_1 = []
-for i in xrange(2,101):
-	pred = model1.predict(np.array([[i, pow(i*0.1,2), y_t1, y_t1*0.1*i]]))[0][0]
+for i in range(2,101):
+	pred = modelone.predict(np.array([[i, pow(i*0.1,2), y_t1, y_t1*0.1*i]]))[0][0]
 	y_pred_1.append(pred)
 
 
@@ -351,47 +353,45 @@ for i in xrange(2,101):
 ##########Build model-2#############
 
 #Model 2
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_2.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
 
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 history = LossHistory()
 batch_size = 1
-model2.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
+modeltwo.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size, validation_data=(x_val_2, y_val_2), shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m2 =  1 - (pow(history.min_loss, 0.5)/np.mean(y_val_2))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2))
 
-"""
-plot_history(history)
-"""
+#plot_history(history)
 
 #get the best epoch and re run training on entire data
-model2 = Sequential()
-model2.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
-model2.compile(loss='mse', optimizer='adam')
-model2.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0),  nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
+modeltwo = Sequential()
+modeltwo.add(Dense(1, input_dim=x_1.shape[1], activation='linear'))
+modeltwo.compile(loss='mse', optimizer='adam')
+modeltwo.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0),  nb_epoch=history.best_epoch, batch_size=batch_size, shuffle=True)
 
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 y_t1 = 0.658106781187
 y_pred_2 = []
-for i in xrange(2,101):
-	pred = model2.predict(np.array([[i, pow(i*0.1,2), y_t1, y_t1*0.1*i]]))[0][0]
+for i in range(2,101):
+	pred = modeltwo.predict(np.array([[i, pow(i*0.1,2), y_t1, y_t1*0.1*i]]))[0][0]
 	y_pred_2.append(pred)
 
 
 
 
-###### Take average of results from model1 and model2
+###### Take average of results from modelone and modeltwo
 w_m1 = w_m1/(w_m1+w_m2)
 w_m2 = 1-w_m1
 y_pred = w_m1*np.array(y_pred_1) + w_m2*np.array(y_pred_2)
 
 break_index = 0
-for i in xrange(0,len(y_pred)):
+for i in range(0,len(y_pred)):
 	if y_pred[i] < 0:
 		break_index = i
 		break
@@ -410,7 +410,7 @@ result = [[0,0.0, 0.0], [1, x_t1, y_t1]]
 # having x values predicted by model trained with output and input being log transformed
 result_log = [[0,0.0, 0.0], [1, x_t1, y_t1]]
 
-for i in xrange(0,len(y_pred)):
+for i in range(0,len(y_pred)):
 	result.append([i+2, x_pred[i], y_pred[i]])
 	result_log.append([i+2, x_pred_log[i], y_pred[i]])
 
@@ -420,13 +420,13 @@ result_log = np.array(result_log)
 
 
 
-print "writing to result_lin_reg.csv"
+print("writing to result_lin_reg.csv")
 result = pd.DataFrame({"[time_index]": result[:,0], "[x]": result[:,1], "[y]" : result[:,2]})
 result.to_csv('result_lin_reg.csv',index=False)
 
 
 
-print "writing to result_lin_reg_log.csv"
+print("writing to result_lin_reg_log.csv")
 result_log = pd.DataFrame({"[time_index]": result_log[:,0], "[x]": result_log[:,1], "[y]" : result_log[:,2]})
 result_log.to_csv('result_lin_reg_log.csv',index=False)
 
@@ -471,12 +471,12 @@ x_val_1 = np.reshape(x_val_1, (x_val_1.shape[0], 1, x_val_1.shape[1]))
 x_2 = np.reshape(x_2, (x_2.shape[0], 1, x_2.shape[1]))
 x_val_2 = np.reshape(x_val_2, (x_val_2.shape[0], 1, x_val_2.shape[1]))
 
-# create and fit the LSTM network for model1
+# create and fit the LSTM network for modelone
 
-model1 = Sequential()
-model1.add(LSTM(16, input_shape=x_1.shape[1:]))
-model1.add(Dense(1))
-model1.compile(loss='mean_squared_error', optimizer='adam')
+modelone = Sequential()
+modelone.add(LSTM(16, input_shape=x_1.shape[1:]))
+modelone.add(Dense(1))
+modelone.compile(loss='mean_squared_error', optimizer='adam')
 
 
 
@@ -484,30 +484,30 @@ history = LossHistory()
 batch_size = 1
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 
-model1.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_1, y_val_1), verbose=2, shuffle=True, callbacks=[early_stopping, history])
+modelone.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_1, y_val_1), verbose=2, shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m1 = 1 -  (pow(history.min_loss, 0.5)/np.mean(y_val_1))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) )
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model1 = Sequential()
-model1.add(LSTM(16, input_shape=x_1.shape[1:]))
-model1.add(Dense(1))
-model1.compile(loss='mean_squared_error', optimizer='adam')
-model1.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
+modelone = Sequential()
+modelone.add(LSTM(16, input_shape=x_1.shape[1:]))
+modelone.add(Dense(1))
+modelone.compile(loss='mean_squared_error', optimizer='adam')
+modelone.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
 
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t1 = 0.707106781187
 x_pred_1 = []
 seq = np.array([sequence.pad_sequences([[0, x_t1]], dtype='float32', maxlen=window_size-1)])
-for i in xrange(2,101):
-	pred = model1.predict(seq)[0][0]
+for i in range(2,101):
+	pred = modelone.predict(seq)[0][0]
 	temp = np.zeros((1,window_size-1))
 	temp[0,-1] = pred
 	temp[0,0:-1] = seq[0][0][1:]
@@ -516,12 +516,12 @@ for i in xrange(2,101):
 
 
 
-# create and fit the LSTM network for model2
+# create and fit the LSTM network for modeltwo
 
-model2 = Sequential()
-model2.add(LSTM(16, input_shape=x_2.shape[1:]))
-model2.add(Dense(1))
-model2.compile(loss='mean_squared_error', optimizer='adam')
+modeltwo = Sequential()
+modeltwo.add(LSTM(16, input_shape=x_2.shape[1:]))
+modeltwo.add(Dense(1))
+modeltwo.compile(loss='mean_squared_error', optimizer='adam')
 
 
 
@@ -529,30 +529,30 @@ history = LossHistory()
 batch_size = 1
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 
-model2.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_2, y_val_2), verbose=2, shuffle=True, callbacks=[early_stopping, history])
+modeltwo.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_2, y_val_2), verbose=2, shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m2 = 1 - (pow(history.min_loss, 0.5)/np.mean(y_val_2))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2))
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model2 = Sequential()
-model2.add(LSTM(16, input_shape=x_2.shape[1:]))
-model2.add(Dense(1))
-model2.compile(loss='mean_squared_error', optimizer='adam')
-model2.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
+modeltwo = Sequential()
+modeltwo.add(LSTM(16, input_shape=x_2.shape[1:]))
+modeltwo.add(Dense(1))
+modeltwo.compile(loss='mean_squared_error', optimizer='adam')
+modeltwo.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
 
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 x_t1 = 0.707106781187
 x_pred_2 = []
 seq = np.array([sequence.pad_sequences([[0, x_t1]], dtype='float32', maxlen=window_size-1)])
-for i in xrange(2,101):
-        pred = model2.predict(seq)[0][0]
+for i in range(2,101):
+        pred = modeltwo.predict(seq)[0][0]
         temp = np.zeros((1,window_size-1))
         temp[0,-1] = pred
         temp[0,0:-1] = seq[0][0][1:]
@@ -560,7 +560,7 @@ for i in xrange(2,101):
         x_pred_2.append(pred)
 
 
-###### Take average of results from model1 and model2
+###### Take average of results from modelone and modeltwo
 w_m1 = w_m1/(w_m1+w_m2)
 w_m2 = 1 - w_m1
 x_pred = w_m1*np.array(x_pred_1) + w_m2*np.array(x_pred_2)
@@ -579,12 +579,12 @@ x_val_1 = np.reshape(x_val_1, (x_val_1.shape[0], 1, x_val_1.shape[1]))
 x_2 = np.reshape(x_2, (x_2.shape[0], 1, x_2.shape[1]))
 x_val_2 = np.reshape(x_val_2, (x_val_2.shape[0], 1, x_val_2.shape[1]))
 
-# create and fit the LSTM network for model1
+# create and fit the LSTM network for modelone
 
-model1 = Sequential()
-model1.add(LSTM(8, input_shape=x_1.shape[1:]))
-model1.add(Dense(1))
-model1.compile(loss='mean_squared_error', optimizer='adam')
+modelone = Sequential()
+modelone.add(LSTM(8, input_shape=x_1.shape[1:]))
+modelone.add(Dense(1))
+modelone.compile(loss='mean_squared_error', optimizer='adam')
 
 
 
@@ -592,30 +592,30 @@ history = LossHistory()
 batch_size = 1
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 
-model1.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_1, y_val_1), verbose=2, shuffle=True, callbacks=[early_stopping, history])
+modelone.fit(x_1, y_1, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_1, y_val_1), verbose=2, shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m1 = 1 - (pow(history.min_loss, 0.5)/np.mean(y_val_1))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_1) )
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model1 = Sequential()
-model1.add(LSTM(8, input_shape=x_1.shape[1:]))
-model1.add(Dense(1))
-model1.compile(loss='mean_squared_error', optimizer='adam')
-model1.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
+modelone = Sequential()
+modelone.add(LSTM(8, input_shape=x_1.shape[1:]))
+modelone.add(Dense(1))
+modelone.compile(loss='mean_squared_error', optimizer='adam')
+modelone.fit(np.append(x_1,x_val_1,axis=0), np.append(y_1,y_val_1,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
 
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 y_t1 = 0.658106781187
 y_pred_1 = []
 seq = np.array([sequence.pad_sequences([[0, y_t1]], dtype='float32', maxlen=window_size-1)])
-for i in xrange(2,101):
-        pred = model1.predict(seq)[0][0]
+for i in range(2,101):
+        pred = modelone.predict(seq)[0][0]
         temp = np.zeros((1,window_size-1))
         temp[0,-1] = pred
         temp[0,0:-1] = seq[0][0][1:]
@@ -623,12 +623,12 @@ for i in xrange(2,101):
         y_pred_1.append(pred)
 
 
-# create and fit the LSTM network for model2
+# create and fit the LSTM network for modeltwo
 
-model2 = Sequential()
-model2.add(LSTM(8, input_shape=x_2.shape[1:]))
-model2.add(Dense(1))
-model2.compile(loss='mean_squared_error', optimizer='adam')
+modeltwo = Sequential()
+modeltwo.add(LSTM(8, input_shape=x_2.shape[1:]))
+modeltwo.add(Dense(1))
+modeltwo.compile(loss='mean_squared_error', optimizer='adam')
 
 
 
@@ -636,30 +636,30 @@ history = LossHistory()
 batch_size = 1
 early_stopping = EarlyStopping(monitor='val_loss', patience=8)
 
-model2.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_2, y_val_2), verbose=2, shuffle=True, callbacks=[early_stopping, history])
+modeltwo.fit(x_2, y_2, nb_epoch=500, batch_size=batch_size,  validation_data=(x_val_2, y_val_2), verbose=2, shuffle=True, callbacks=[early_stopping, history])
 
-print "Minimum validation loss is - mean square error: ", history.min_loss
+print("Minimum validation loss is - mean square error: ", history.min_loss)
 w_m2 = 1 - (pow(history.min_loss, 0.5)/np.mean(y_val_2))
-print "RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2) 
+print("RMSE percent of mean of output: ", pow(history.min_loss, 0.5)*100/np.mean(y_val_2))
 
 """
 plot_history(history)
 """
 
 #get the best epoch and re run training on entire data
-model2 = Sequential()
-model2.add(LSTM(8, input_shape=x_2.shape[1:]))
-model2.add(Dense(1))
-model2.compile(loss='mean_squared_error', optimizer='adam')
-model2.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
+modeltwo = Sequential()
+modeltwo.add(LSTM(8, input_shape=x_2.shape[1:]))
+modeltwo.add(Dense(1))
+modeltwo.compile(loss='mean_squared_error', optimizer='adam')
+modeltwo.fit(np.append(x_2,x_val_2,axis=0), np.append(y_2,y_val_2,axis=0), nb_epoch=history.best_epoch, batch_size=batch_size, verbose=2, shuffle=True)
 
 
 ##############predict path for projectile shot at an angle of 45 degrees and velocity of 10m/s
 y_t1 = 0.658106781187
 y_pred_2 = []
 seq = np.array([sequence.pad_sequences([[0, y_t1]], dtype='float32', maxlen=window_size-1)])
-for i in xrange(2,101):
-        pred = model2.predict(seq)[0][0]
+for i in range(2,101):
+        pred = modeltwo.predict(seq)[0][0]
         temp = np.zeros((1,window_size-1))
         temp[0,-1] = pred
         temp[0,0:-1] = seq[0][0][1:]
@@ -669,13 +669,13 @@ for i in xrange(2,101):
 
 
 
-###### Take average of results from model1 and model2
+###### Take average of results from modelone and modeltwo
 w_m1 = w_m1/(w_m1+w_m2)
 w_m2 = 1 - w_m1
 y_pred = w_m1*np.array(y_pred_1) + w_m2*np.array(y_pred_2)
 
 break_index = 0
-for i in xrange(0,len(y_pred)):
+for i in range(0,len(y_pred)):
 	if y_pred[i] < 0:
 		break_index = i
 		break
@@ -689,12 +689,12 @@ y_pred = y_pred[0:break_index]
 
 result = [[0,0.0, 0.0], [1, x_t1, y_t1]]
 
-for i in xrange(0,len(y_pred)):
+for i in range(0,len(y_pred)):
 	result.append([i+2, x_pred[i], y_pred[i]])
 
 
 result = np.array(result)
 
-print "writing to result_lstm.csv"
+print("writing to result_lstm.csv")
 result = pd.DataFrame({"[time_index]": result[:,0], "[x]": result[:,1], "[y]" : result[:,2]})
-result.to_csv('result_lstm.csv',index=False)
+result.to_csv("result_lstm.csv",index=False)
